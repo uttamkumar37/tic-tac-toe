@@ -1,0 +1,73 @@
+# ==========================================
+# Default profile (local dev with MySQL)
+# ==========================================
+spring:
+  application:
+    name: tic-tac-toe-backend
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/tictactoe?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:UKG@123$}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update          # use 'validate' in production with Flyway
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
+
+# ==========================================
+# JWT
+# ==========================================
+jwt:
+  # IMPORTANT: override with a 256-bit random secret in production (env var JWT_SECRET)
+  secret: ${JWT_SECRET:tictactoeSuperSecretKeyForJWTSigning2024!MustBe256BitsLong}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}   # 24 hours
+
+# ==========================================
+# CORS (comma-separated allowed origins)
+# ==========================================
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+# ==========================================
+# Actuator
+# ==========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# ==========================================
+# Logging
+# ==========================================
+logging:
+  level:
+    com.tictactoe: DEBUG
+    org.springframework.web.socket: INFO
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+server:
+  port: ${SERVER_PORT:8080}

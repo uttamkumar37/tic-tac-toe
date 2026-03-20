@@ -1,0 +1,32 @@
+# ==========================================
+# Production profile (activated by SPRING_PROFILES_ACTIVE=prod)
+# All sensitive values come from environment variables
+# ==========================================
+spring:
+  datasource:
+    url: ${DATABASE_URL}           # e.g. jdbc:mysql://rds-host:3306/tictactoe
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate           # never auto-create in production
+    show-sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+logging:
+  level:
+    com.tictactoe: INFO
+    root: WARN
