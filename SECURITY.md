@@ -7,7 +7,7 @@ Please do not open public issues for security vulnerabilities.
 Send a private report to:
 
 - Email: `your-security-email@example.com`
-- GitHub: `https://github.com/YOUR_GITHUB_USERNAME`
+- GitHub: `https://github.com/uttamkumar37/tic-tac-toe`
 
 Include:
 

@@ -49,7 +49,7 @@ Create this DNS record:
 
 | Type | Host/Name | Value/Target |
 | --- | --- | --- |
-| CNAME | `tictactoe` | `YOUR_GITHUB_USERNAME.github.io` |
+| CNAME | `tictactoe` | `uttamkumar37.github.io` |
 
 After DNS propagates, configure the custom domain in GitHub Pages settings and enable HTTPS.
 

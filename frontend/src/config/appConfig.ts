@@ -12,7 +12,7 @@ export const appConfig = {
   publicUrl: 'https://tictactoe.mycloudcampus.in',
   portfolioUrl: 'https://uttam.mycloudcampus.in',
   productUrl: 'https://mycloudcampus.in',
-  githubUrl: 'https://github.com/uttamkumar/tic-tac-toe',
+  githubUrl: 'https://github.com/uttamkumar37/tic-tac-toe',
 };
 
 export type { AppMode };

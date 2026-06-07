@@ -124,7 +124,7 @@ tic-tac-toe/
 ### 1. Clone
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/tic-tac-toe.git
+git clone https://github.com/uttamkumar37/tic-tac-toe.git
 cd tic-tac-toe
 ```
 
@@ -425,7 +425,7 @@ Custom domain DNS:
 
 | Type | Host/Name | Value/Target |
 | --- | --- | --- |
-| CNAME | `tictactoe` | `YOUR_GITHUB_USERNAME.github.io` |
+| CNAME | `tictactoe` | `uttamkumar37.github.io` |
 
 ### Backend: Render, Railway, Fly.io
 
@@ -511,5 +511,5 @@ MIT. See [LICENSE](LICENSE).
 
 Java Backend Developer
 
-- GitHub: `https://github.com/YOUR_GITHUB_USERNAME`
+- GitHub: `https://github.com/uttamkumar37/tic-tac-toe`
 - LinkedIn: `https://linkedin.com/in/YOUR_LINKEDIN_USERNAME`
