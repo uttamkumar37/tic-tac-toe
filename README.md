@@ -1,385 +1,515 @@
-# Tic-Tac-Toe — Full-Stack Production App
+# Tic-Tac-Toe Full-Stack Portfolio App
 
-A production-ready, real-time Tic-Tac-Toe platform built with **Java 17 + Spring Boot 3** on the backend and **React 18 + TypeScript** on the frontend. Supports multiplayer rooms over WebSocket, an AI bot (Easy / Hard Minimax), JWT authentication, Redis-cached game state, and a full CI/CD pipeline on GitHub Actions.
+![Java](https://img.shields.io/badge/Java-17-red)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-brightgreen)
+![React](https://img.shields.io/badge/React-18-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED)
+![CI](https://img.shields.io/badge/CI-GitHub%20Actions-black)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
----
+A production-style Tic-Tac-Toe application built with Java Spring Boot, React, TypeScript, WebSocket/STOMP, MySQL, Redis, Docker, and GitHub Actions.
 
-## Table of Contents
+The public GitHub Pages site is a frontend-only demo that works without the backend. The Spring Boot backend remains in the repository for local development or separate deployment later.
 
-1. [Tech Stack](#tech-stack)
-2. [Architecture](#architecture)
-3. [Project Structure](#project-structure)
-4. [Quick Start (Docker)](#quick-start-docker)
-5. [Local Development](#local-development)
-6. [REST API Reference](#rest-api-reference)
-7. [WebSocket Events](#websocket-events)
-8. [AI Bot](#ai-bot)
-9. [Environment Variables](#environment-variables)
-10. [CI/CD](#cicd)
-11. [Database Schema](#database-schema)
+## Live Demo
 
----
+- Frontend Demo: https://tictactoe.mycloudcampus.in
 
-## Tech Stack
+Note: The public GitHub Pages version runs in frontend-only demo mode. The Spring Boot backend is included in this repository and can be run locally or deployed separately.
 
-| Layer      | Technology |
-|------------|-----------|
-| Backend    | Java 17, Spring Boot 3.2, Spring Security, Spring WebSocket (STOMP/SockJS), Spring Data JPA, Spring Data Redis |
-| Auth       | JWT (HMAC-SHA256 via `jjwt` 0.11.5), BCrypt strength 12 |
-| Database   | MySQL 8 (prod), H2 (tests) |
-| Cache      | Redis 7 (Lettuce client, JSON serialization) |
-| Frontend   | React 18, TypeScript, Vite 5, Redux Toolkit, React Router v6, Axios, @stomp/stompjs, Tailwind CSS |
-| Infra      | Docker, Docker Compose, GitHub Actions, GHCR |
+## Live Links
 
----
+- Frontend Demo: `https://tictactoe.mycloudcampus.in`
+- Backend API: optional, deploy separately
+- API health: optional, deploy separately
+
+## Features
+
+- User registration and login with JWT
+- BCrypt password hashing
+- Protected REST API endpoints
+- WebSocket/STOMP real-time game updates
+- Multiplayer room create/join flow
+- Bot mode with easy random play and hard minimax play
+- Undo and restart support
+- Match history and player profile stats
+- Public local-only frontend demo mode
+- Static GitHub Pages demo with localStorage-backed bot, local multiplayer, history, and stats
+- Redis-backed live board cache
+- MySQL persistence with JPA validation-ready DDL
+- Docker and Docker Compose setup
+- GitHub Actions CI, Docker image build, and GitHub Pages deploy
 
 ## Architecture
 
-```
-Browser
-  │
-  ├── HTTP (REST)  ──► Nginx ──► /api/*  ──► Spring Boot (port 8080)
-  │                                              │
-  └── WebSocket    ──► Nginx ──► /ws     ──► Spring WebSocket (STOMP)
-                                                 │
-                                           ┌─────┴──────┐
-                                           │  MySQL     │
-                                           │  Redis     │
-                                           └────────────┘
+Public GitHub Pages demo:
+
+```mermaid
+flowchart LR
+  Browser[Visitor Browser] --> Pages[GitHub Pages]
+  Pages --> React[React Static Demo]
+  React --> Demo[Demo Services]
+  Demo --> LocalStorage[(localStorage)]
 ```
 
-```
-Backend Package Structure:
-controller ──► service ──► repository ──► JPA / MySQL
-                │
-                ├── engine (GameEngine, BotEngine — pure logic)
-                ├── security (JWT filter, UserDetailsService)
-                └── config  (WebSocket, Redis, Security, CORS)
+Optional full-stack/live backend:
+
+```mermaid
+flowchart LR
+  Browser[React + TypeScript] -->|REST /api| Nginx[Nginx]
+  Browser -->|STOMP /ws| Nginx
+  Nginx --> API[Spring Boot API]
+  API --> Security[Spring Security + JWT]
+  API --> Game[Game Service]
+  Game --> Engine[GameEngine + BotEngine]
+  Game --> DB[(MySQL)]
+  Game --> Cache[(Redis)]
+  API --> WS[WebSocket Broker]
+  WS --> Browser
 ```
 
-**Board encoding:** a 9-character string `"_________"`, indices 0–8 (row-major).  
-`_` = empty, `X` = player X, `O` = player O / bot.
+Backend package flow:
 
----
+```text
+controller -> service -> repository -> MySQL
+                 |
+                 -> engine
+                 -> security
+                 -> Redis
+```
+
+Board format:
+
+```text
+"_________"  // 9 cells, row-major, _ means empty
+```
+
+## Tech Stack
+
+| Area | Technology |
+| --- | --- |
+| Backend | Java 17, Spring Boot 3.2.3, Spring Web, Spring Security, Spring WebSocket |
+| Data | Spring Data JPA, MySQL 8, Redis 7 |
+| Auth | JWT with jjwt, BCrypt |
+| Frontend | React 18, TypeScript, Vite 8, Redux Toolkit, React Router, Axios |
+| Realtime | STOMP over SockJS |
+| Styling | Tailwind CSS |
+| Infra | Docker, Docker Compose, Nginx, GHCR |
+| CI/CD | GitHub Actions, GitHub Pages |
 
 ## Project Structure
 
-```
+```text
 tic-tac-toe/
-├── backend/
-│   ├── src/main/java/com/tictactoe/
-│   │   ├── config/           # WebSocket, Redis, Security, CORS
-│   │   ├── controller/       # REST + WebSocket controllers
-│   │   ├── dto/              # Request / Response DTOs
-│   │   ├── engine/           # GameEngine, BotEngine
-│   │   ├── exception/        # Custom exceptions + GlobalExceptionHandler
-│   │   ├── model/            # JPA entities (User, Game, Move, GameHistory)
-│   │   ├── repository/       # Spring Data repositories
-│   │   ├── security/         # JwtTokenProvider, JwtAuthFilter, UserDetailsServiceImpl
-│   │   └── service/          # AuthService, GameService, UserService, ...
-│   ├── src/test/             # JUnit 5 unit tests (GameEngine, BotEngine)
-│   ├── Dockerfile
-│   └── pom.xml
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/       # Cell, Board, PlayerInfo, GameControls, GameResult, Navbar
-│   │   ├── hooks/            # useAuth, useWebSocket
-│   │   ├── pages/            # Login, Register, Lobby, Game, BotGame, History, Profile
-│   │   ├── services/         # api.ts (Axios), websocketService.ts (STOMP)
-│   │   ├── store/            # Redux slices (auth, game) + store config
-│   │   ├── types/            # TypeScript interfaces mirroring Java DTOs
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
-│
-├── docs/
-│   └── db-schema.sql
-│
-├── .github/workflows/ci-cd.yml
-├── docker-compose.yml
+├── backend/                 # Spring Boot API
+├── frontend/                # React/Vite frontend
+├── docs/                    # Architecture, demo mode, deployment, DDL, screenshots
+├── .github/workflows/       # CI/CD and GitHub Pages workflows
+├── docker-compose.yml       # Local full-stack Docker setup
+├── docker-compose.prod.yml  # Production Docker Compose setup
 └── README.md
 ```
 
----
+## Prerequisites
 
-## Quick Start (Docker)
+- Java 17+
+- Maven 3.9+
+- Node.js 20+
+- Docker 24+ and Docker Compose v2
+- MySQL 8 and Redis 7 if running without Docker
 
-### Prerequisites
+## Local Setup
 
-- Docker ≥ 24 and Docker Compose v2
+### 1. Clone
 
 ```bash
-# Clone
-git clone https://github.com/<your-org>/tic-tac-toe.git
+git clone https://github.com/YOUR_GITHUB_USERNAME/tic-tac-toe.git
 cd tic-tac-toe
-
-# (Optional) Set a strong JWT secret
-export JWT_SECRET=your_super_secret_at_least_32_chars_long
-
-# Build and run all services
-docker compose up --build
 ```
 
-Open [http://localhost](http://localhost) in your browser.
-
----
-
-## GitHub Deployment
-
-This repository is now set up for a GitHub Actions based deployment flow:
-
-1. Push to `main`
-2. GitHub Actions builds and pushes Docker images to GHCR
-3. The deploy job copies `docker-compose.prod.yml` to your server
-4. The deploy job writes a `.env` file on the server from GitHub secrets
-5. The server pulls the latest images and restarts the stack
-
-### Files used for deployment
-
-- `docker-compose.prod.yml` — production stack using GHCR images
-- `.github/workflows/ci-cd.yml` — build, publish, and deploy workflow
-- `.env.example` — template for required runtime variables
-
-### Required GitHub secrets
-
-- `DEPLOY_HOST`
-- `DEPLOY_USER`
-- `DEPLOY_SSH_KEY`
-- `DEPLOY_PATH`
-- `GHCR_USERNAME`
-- `GHCR_TOKEN`
-- `MYSQL_ROOT_PASSWORD`
-- `MYSQL_DATABASE`
-- `MYSQL_USER`
-- `MYSQL_PASSWORD`
-- `JWT_SECRET`
-- `JWT_EXPIRATION_MS`
-- `CORS_ALLOWED_ORIGINS`
-
-### Server requirements
-
-- Docker Engine with Docker Compose v2
-- SSH access for the deploy user
-- Permission for the deploy user to run `docker compose`
-
-### First-time deployment flow
+### 2. Backend Environment
 
 ```bash
-# 1. Create a new GitHub repository and push this project
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/<owner>/<repo>.git
-git push -u origin main
+cp backend/.env.example backend/.env
 ```
 
-After that, every push to `main` will rebuild and redeploy the application.
+Set a real JWT secret:
 
----
+```text
+JWT_SECRET=use-at-least-32-random-bytes-here
+```
 
-## Local Development
+The Spring app reads environment variables from your shell, Docker, IDE run config, or deployment platform. Do not commit `.env`.
 
-### Backend
+### 3. Backend
 
 ```bash
 cd backend
-
-# Requires: Java 17+, Maven 3.9+, MySQL 8, Redis 7
-# Create the database first:
-#   mysql -u root -p -e "CREATE DATABASE tictactoe;"
-
+mvn clean test
 mvn spring-boot:run
-# Starts on http://localhost:8080
 ```
 
-### Frontend
+Backend runs on:
+
+```text
+http://localhost:8080
+```
+
+### 4. Frontend Environment
+
+```bash
+cp frontend/.env.example frontend/.env.local
+```
+
+Default local values:
+
+```text
+VITE_APP_MODE=live
+VITE_API_BASE_URL=http://localhost:8080/api
+VITE_WS_BASE_URL=http://localhost:8080/ws
+VITE_BASE_PATH=/
+```
+
+For frontend-only demo mode, leave the backend URLs empty:
+
+```text
+VITE_APP_MODE=demo
+VITE_API_BASE_URL=
+VITE_WS_BASE_URL=
+VITE_BASE_PATH=/
+```
+
+### 5. Frontend
 
 ```bash
 cd frontend
-
-npm install
+npm ci
 npm run dev
-# Starts on http://localhost:5173
-# Proxies /api and /ws to http://localhost:8080
 ```
 
-### Run backend tests only
+Frontend runs on:
+
+```text
+http://localhost:5173
+```
+
+## Docker Compose
+
+Create a root environment file:
 
 ```bash
-cd backend && mvn test
+cp .env.example .env
 ```
 
----
+Edit all placeholder values, especially:
 
-## REST API Reference
-
-All endpoints (except `/api/auth/**`, `/actuator/health`) require:
-
+```text
+MYSQL_ROOT_PASSWORD
+MYSQL_PASSWORD
+REDIS_PASSWORD
+JWT_SECRET
+CORS_ALLOWED_ORIGINS
 ```
-Authorization: Bearer <jwt_token>
+
+Start the full stack:
+
+```bash
+docker compose --env-file .env up --build
+```
+
+Frontend:
+
+```text
+http://localhost
+```
+
+Backend:
+
+```text
+http://localhost:8080
+```
+
+## Environment Variables
+
+### Backend
+
+See [backend/.env.example](backend/.env.example).
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | JDBC URL for MySQL |
+| `DB_USERNAME` | Database user |
+| `DB_PASSWORD` | Database password |
+| `REDIS_HOST` | Redis hostname |
+| `REDIS_PORT` | Redis port |
+| `REDIS_PASSWORD` | Redis password, blank only for local development |
+| `JWT_SECRET` | At least 32 random bytes |
+| `JWT_EXPIRATION_MS` | JWT lifetime in milliseconds |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated trusted frontend origins |
+
+### Frontend
+
+See [frontend/.env.example](frontend/.env.example).
+
+| Variable | Purpose |
+| --- | --- |
+| `VITE_APP_MODE` | `demo` for browser-only public demo, `live` for backend mode |
+| `VITE_API_BASE_URL` | Backend API base URL |
+| `VITE_WS_BASE_URL` | Backend SockJS/STOMP endpoint |
+| `VITE_BASE_PATH` | Static hosting base path, such as `/tic-tac-toe/` |
+
+## Documentation
+
+- [Demo Mode](docs/DEMO_MODE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Deployment](docs/DEPLOYMENT.md)
+
+## API Documentation
+
+All endpoints except `/api/auth/**` and `/actuator/health` require:
+
+```http
+Authorization: Bearer <jwt>
 ```
 
 ### Auth
 
 | Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/auth/register` | Register a new user |
-| POST | `/api/auth/login` | Login, returns JWT |
+| --- | --- | --- |
+| `POST` | `/api/auth/register` | Register user |
+| `POST` | `/api/auth/login` | Login and receive JWT |
 
-**Register body:**
+Register body:
+
 ```json
-{ "username": "alice", "email": "alice@example.com", "password": "secret123" }
+{
+  "username": "alice",
+  "email": "alice@example.com",
+  "password": "secret123"
+}
 ```
 
-**Login body:**
-```json
-{ "username": "alice", "password": "secret123" }
-```
+Login body:
 
-**Auth response:**
 ```json
-{ "token": "eyJ...", "tokenType": "Bearer", "username": "alice", "email": "...", "userId": 1 }
+{
+  "username": "alice",
+  "password": "secret123"
+}
 ```
-
----
 
 ### Games
 
 | Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/games` | Create a game |
-| GET | `/api/games/open` | List open multiplayer rooms |
-| GET | `/api/games/{roomCode}` | Get game state |
-| POST | `/api/games/{roomCode}/join` | Join a multiplayer room |
-| POST | `/api/games/move` | Make a move (REST fallback) |
-| POST | `/api/games/{roomCode}/undo` | Undo last move (BOT mode) |
-| POST | `/api/games/{roomCode}/restart` | Restart game |
+| --- | --- | --- |
+| `POST` | `/api/games` | Create bot or multiplayer game |
+| `GET` | `/api/games/open` | List waiting multiplayer rooms |
+| `GET` | `/api/games/{roomCode}` | Get game state for a participant |
+| `POST` | `/api/games/{roomCode}/join` | Join waiting multiplayer room |
+| `POST` | `/api/games/move` | Make a move |
+| `POST` | `/api/games/{roomCode}/undo` | Undo move |
+| `POST` | `/api/games/{roomCode}/restart` | Restart game |
 
-**Create game body:**
+Create multiplayer:
+
 ```json
-// Multiplayer
-{ "mode": "MULTIPLAYER" }
-
-// vs BOT
-{ "mode": "BOT", "botDifficulty": "HARD" }
+{
+  "mode": "MULTIPLAYER"
+}
 ```
 
----
+Create bot game:
+
+```json
+{
+  "mode": "BOT",
+  "botDifficulty": "HARD"
+}
+```
 
 ### Users
 
 | Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/users/me` | Current user profile + stats |
-| GET | `/api/users/{username}` | Public profile |
-
----
+| --- | --- | --- |
+| `GET` | `/api/users/me` | Private profile, includes email |
+| `GET` | `/api/users/{username}` | Public profile, excludes email |
 
 ### History
 
 | Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/history?page=0&size=10` | Paginated match history |
+| --- | --- | --- |
+| `GET` | `/api/history?page=0&size=10` | Authenticated user's match history |
 
----
+## WebSocket
 
-## WebSocket Events
+Endpoint:
 
-Connect to `ws://localhost:8080/ws` using SockJS + STOMP.
-
-Pass JWT in connect headers:
-```js
-client.connectHeaders = { Authorization: `Bearer ${token}` };
+```text
+/ws
 ```
 
-### Subscribe
+STOMP connect headers:
+
+```http
+Authorization: Bearer <jwt>
+```
+
+Subscribe:
 
 | Destination | Description |
-|------------|-------------|
-| `/topic/game/{roomCode}` | Game state updates (broadcast) |
-| `/user/queue/errors` | Per-user error messages |
+| --- | --- |
+| `/topic/game/{roomCode}` | Game state updates |
+| `/user/queue/errors` | Per-user errors |
 
-### Send
+Send:
 
-| Destination | Body | Description |
-|------------|------|-------------|
-| `/app/game.move` | `{ roomCode, position }` | Make a move |
-| `/app/game.undo` | `{ roomCode }` | Undo last move |
-| `/app/game.restart` | `{ roomCode }` | Restart game |
+| Destination | Body |
+| --- | --- |
+| `/app/game.move` | `{ "roomCode": "AB12CD34", "position": 4 }` |
+| `/app/game.undo` | `{ "roomCode": "AB12CD34" }` |
+| `/app/game.restart` | `{ "roomCode": "AB12CD34" }` |
 
-Game state broadcast (`GameResponse`):
-```json
-{
-  "id": 1,
-  "roomCode": "AB12CD34",
-  "playerXUsername": "alice",
-  "playerOUsername": "bob",
-  "mode": "MULTIPLAYER",
-  "status": "IN_PROGRESS",
-  "board": "XO_______",
-  "currentTurn": "O",
-  "winner": null,
-  "isDraw": false
-}
+## Testing
+
+Backend:
+
+```bash
+cd backend
+mvn clean test
 ```
 
----
+Frontend:
 
-## AI Bot
+```bash
+cd frontend
+npm ci
+npm run build
+npm audit --audit-level=moderate
+```
 
-| Difficulty | Algorithm | Description |
-|------------|-----------|-------------|
-| EASY | Random | Picks a random empty cell |
-| HARD | Minimax (depth-limited) | Plays optimally — never loses |
+Docker config:
 
-The Minimax implementation in `BotEngine.java` assigns:
-- **+10 − depth** for O wins (bot wants to win fast)
-- **depth − 10** for X wins (bot wants to delay its loss)
-- **0** for draws
+```bash
+docker compose --env-file .env.example config
+docker compose --env-file .env.example -f docker-compose.prod.yml config
+```
 
----
+## Deployment
 
-## Environment Variables
+### Frontend: GitHub Pages
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SPRING_DATASOURCE_URL` | (required) | MySQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | (required) | DB username |
-| `SPRING_DATASOURCE_PASSWORD` | (required) | DB password |
-| `SPRING_DATA_REDIS_HOST` | `localhost` | Redis host |
-| `SPRING_DATA_REDIS_PORT` | `6379` | Redis port |
-| `JWT_SECRET` | (required) | ≥32-char secret for HMAC-SHA256 |
-| `JWT_EXPIRATION_MS` | `86400000` | Token lifetime (ms) |
-| `APP_CORS_ALLOWED_ORIGINS` | `http://localhost` | Comma-separated CORS origins |
+The `GitHub Pages` workflow builds and deploys only the static frontend demo to:
 
----
+```text
+https://tictactoe.mycloudcampus.in
+```
 
-## CI/CD
+The workflow uses demo mode:
 
-`.github/workflows/ci-cd.yml` runs on every push/PR to `main`:
+```text
+VITE_APP_MODE=demo
+VITE_API_BASE_URL=
+VITE_WS_BASE_URL=
+VITE_BASE_PATH=/
+```
 
-1. **Backend job** — Maven build + unit tests (MySQL service container)
-2. **Frontend job** — `npm ci`, TypeScript check, `npm run build`
-3. **Docker** — builds and pushes `backend` + `frontend` images to GHCR on merge to `main`
-4. **Deploy job** — SSH into production server, `docker compose pull && docker compose up -d`
+Enable Pages:
 
-Required GitHub secrets for deployment:
-- `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`
+1. Go to repository Settings.
+2. Open Pages.
+3. Select GitHub Actions as the source.
+4. Push to `main`.
 
----
+Custom domain DNS:
+
+| Type | Host/Name | Value/Target |
+| --- | --- | --- |
+| CNAME | `tictactoe` | `YOUR_GITHUB_USERNAME.github.io` |
+
+### Backend: Render, Railway, Fly.io
+
+Deploy the backend separately. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+Required backend services:
+
+- MySQL
+- Redis
+- HTTPS-capable public backend host
+
+### Docker Compose Production
+
+Use [docker-compose.prod.yml](docker-compose.prod.yml) on a VPS:
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.prod.yml --env-file .env up -d
+```
+
+Use real secrets and a TLS reverse proxy for public deployment.
+
+## Security Notes
+
+- JWT secret must be configured and at least 32 bytes.
+- WebSocket `CONNECT` validates JWT and sets the authenticated user principal.
+- Game reads and mutations are limited to `playerX` and `playerO`.
+- Bot games can only be read, undone, and restarted by the owner.
+- Public profiles do not expose email addresses.
+- Production actuator exposure is limited to health.
+- `.env`, `.env.local`, and generated build outputs are ignored.
+- Do not publish real credentials in issues, screenshots, or commits.
 
 ## Database Schema
 
-See [docs/db-schema.sql](docs/db-schema.sql) for full DDL.
+The production DDL is in [docs/db-schema.sql](docs/db-schema.sql).
 
-**Tables:** `users`, `games`, `moves`, `game_history`
+The schema is aligned with JPA validation, including:
 
----
+- `game_history.player_x_id`
+- `game_history.player_o_id`
+- `games.version` for optimistic locking
+
+## Roadmap
+
+- End-to-end Playwright tests
+- Testcontainers MySQL and Redis integration tests
+- Spectator mode
+- Leaderboard
+- Password reset flow
+- Refresh tokens
+- Broker relay for horizontal WebSocket scaling
+
+## Known Limitations
+
+- GitHub Pages hosts only the static frontend.
+- The backend must be deployed separately.
+- The WebSocket broker is in-memory and intended for one backend instance.
+- The local-only demo does not persist games or call the backend.
+- Testcontainers are not yet wired into CI.
+
+## Screenshots
+
+Add screenshots under [docs/screenshots](docs/screenshots).
+
+Recommended files:
+
+- `landing.png`
+- `demo.png`
+- `lobby.png`
+- `bot-game.png`
+- `multiplayer.png`
+- `history.png`
+- `profile.png`
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
+
+## Author
+
+**Uttam Kumar**
+
+Java Backend Developer
+
+- GitHub: `https://github.com/YOUR_GITHUB_USERNAME`
+- LinkedIn: `https://linkedin.com/in/YOUR_LINKEDIN_USERNAME`

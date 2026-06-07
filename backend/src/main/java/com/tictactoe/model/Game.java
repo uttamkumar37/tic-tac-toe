@@ -7,7 +7,9 @@ import com.tictactoe.model.enums.PlayerSymbol;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -37,6 +39,9 @@ public class Game {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
     /** Unique room code used by WebSocket topics and share links */
     @Column(nullable = false, unique = true, length = 12)
     private String roomCode;
@@ -51,11 +56,13 @@ public class Game {
     private User playerO;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 20)
     private GameMode mode;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 20)
     @Builder.Default
     private GameStatus status = GameStatus.WAITING;
 
@@ -65,15 +72,21 @@ public class Game {
     private String board = "_________";
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(length = 1)
     @Builder.Default
     private PlayerSymbol currentTurn = PlayerSymbol.X;
 
     /** Winner symbol; null when draw or game not finished */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(length = 1)
     private PlayerSymbol winner;
 
     /** Only relevant when mode == BOT */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(length = 10)
     private BotDifficulty botDifficulty;
 
     @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

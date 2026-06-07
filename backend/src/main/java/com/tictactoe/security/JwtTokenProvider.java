@@ -2,11 +2,14 @@ package com.tictactoe.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.security.Key;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
@@ -28,9 +31,18 @@ public class JwtTokenProvider {
     @Value("${jwt.expiration-ms}")
     private long jwtExpirationMs;
 
+    @PostConstruct
+    void validateConfiguration() {
+        if (!StringUtils.hasText(jwtSecret)) {
+            throw new IllegalStateException("JWT_SECRET must be configured");
+        }
+        if (jwtSecret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT_SECRET must be at least 256 bits (32 bytes)");
+        }
+    }
+
     private Key getSigningKey() {
-        // Derive a proper HMAC key from the configured secret (URL-safe Base64)
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(String username) {

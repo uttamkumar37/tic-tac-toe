@@ -4,6 +4,8 @@ import com.tictactoe.model.enums.PlayerSymbol;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -35,7 +37,8 @@ public class Move {
     private User user; // null for BOT moves
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 1)
     private PlayerSymbol symbol;
 
     /** Board position 0-8 */

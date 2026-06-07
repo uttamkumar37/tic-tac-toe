@@ -5,7 +5,7 @@
 # ==========================================
 
 # ----- Stage 1: Build -----
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /app
 
@@ -18,18 +18,22 @@ COPY src ./src
 RUN mvn -f pom.xml clean package -DskipTests --no-transfer-progress
 
 # ----- Stage 2: Runtime -----
-FROM eclipse-temurin:17-jre-alpine AS runtime
+FROM eclipse-temurin:17-jre AS runtime
 
 # Create non-root user for security
-RUN apk add --no-cache curl \
-  && addgroup -S appgroup \
-  && adduser -S appuser -G appgroup
-USER appuser
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/* \
+  && groupadd --system appgroup \
+  && useradd --system --gid appgroup --home-dir /app --shell /usr/sbin/nologin appuser
 
 WORKDIR /app
 
 # Copy the fat JAR
 COPY --from=builder /app/target/*.jar app.jar
+RUN chown -R appuser:appgroup /app
+
+USER appuser
 
 # Expose the application port
 EXPOSE 8080

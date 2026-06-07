@@ -1,6 +1,14 @@
 -- ============================================================
 -- Tic-Tac-Toe Database Schema
 -- MySQL 8.x
+--
+-- This DDL is aligned with the current JPA entities and the
+-- production profile's `spring.jpa.hibernate.ddl-auto=validate`.
+--
+-- Existing installations that used the older denormalized
+-- `game_history.player_x_username` / `player_o_username` columns
+-- should migrate to `player_x_id` / `player_o_id` foreign keys before
+-- enabling production schema validation.
 -- ============================================================
 
 -- ---- Users ----
@@ -24,6 +32,7 @@ CREATE TABLE users (
 -- ---- Games ----
 CREATE TABLE games (
     id             BIGINT       NOT NULL AUTO_INCREMENT,
+    version        BIGINT       NULL,
     room_code      VARCHAR(12)  NOT NULL,
     player_x_id    BIGINT       NOT NULL,
     player_o_id    BIGINT       NULL,        -- NULL while waiting, or BOT
@@ -51,8 +60,8 @@ CREATE TABLE moves (
     game_id        BIGINT      NOT NULL,
     user_id        BIGINT      NULL,         -- NULL for BOT moves
     symbol         VARCHAR(1)  NOT NULL,     -- 'X' | 'O'
-    position       TINYINT     NOT NULL,     -- 0-8 (row-major)
-    move_number    SMALLINT    NOT NULL,
+    position       INT         NOT NULL,     -- 0-8 (row-major)
+    move_number    INT         NOT NULL,
     board_snapshot VARCHAR(9)  NOT NULL,     -- board state AFTER this move
     played_at      DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
@@ -64,20 +73,30 @@ CREATE TABLE moves (
 
 -- ---- Game History (denormalised archive) ----
 CREATE TABLE game_history (
-    id               BIGINT       NOT NULL AUTO_INCREMENT,
-    game_id          BIGINT       NOT NULL,
-    room_code        VARCHAR(12)  NOT NULL,
-    player_x_username VARCHAR(50) NOT NULL,
-    player_o_username VARCHAR(50) NULL,
-    mode             VARCHAR(20)  NOT NULL,
-    winner           VARCHAR(1)   NULL,
-    winner_username  VARCHAR(50)  NULL,
-    total_moves      SMALLINT     NOT NULL DEFAULT 0,
-    final_board      VARCHAR(9)   NOT NULL,
-    created_at       DATETIME(6)  NOT NULL,
-    finished_at      DATETIME(6)  NULL,
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+    game_id         BIGINT       NOT NULL,
+    room_code       VARCHAR(255) NOT NULL,
+    player_x_id     BIGINT       NOT NULL,
+    player_o_id     BIGINT       NULL,        -- NULL for BOT games
+    mode            VARCHAR(20)  NOT NULL,
+    winner          VARCHAR(1)   NULL,        -- 'X', 'O', or NULL (draw)
+    winner_username VARCHAR(255) NULL,        -- "BOT" when bot wins
+    total_moves     INT          NOT NULL DEFAULT 0,
+    final_board     VARCHAR(9)   NOT NULL,
+    created_at      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    finished_at     DATETIME(6)  NULL,
     PRIMARY KEY (id),
-    KEY idx_history_player_x (player_x_username),
-    KEY idx_history_player_o (player_o_username),
-    KEY idx_history_finished (finished_at)
+    KEY idx_history_player_x (player_x_id),
+    KEY idx_history_player_o (player_o_id),
+    KEY idx_history_created  (created_at),
+    KEY idx_history_finished (finished_at),
+    CONSTRAINT fk_history_player_x FOREIGN KEY (player_x_id) REFERENCES users (id),
+    CONSTRAINT fk_history_player_o FOREIGN KEY (player_o_id) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Migration sketch for older game_history tables:
+-- 1. Add nullable player_x_id and player_o_id columns.
+-- 2. Backfill by joining users.username to the old username columns.
+-- 3. Make player_x_id NOT NULL after verifying every row has a match.
+-- 4. Add indexes and foreign keys.
+-- 5. Drop player_x_username and player_o_username after application rollout.

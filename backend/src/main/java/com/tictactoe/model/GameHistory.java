@@ -5,6 +5,8 @@ import com.tictactoe.model.enums.PlayerSymbol;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -45,11 +47,14 @@ public class GameHistory {
     private User playerO;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 20)
     private GameMode mode;
 
     /** Winner symbol; null means draw */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(length = 1)
     private PlayerSymbol winner;
 
     /** Username of winner for denormalized fast display */

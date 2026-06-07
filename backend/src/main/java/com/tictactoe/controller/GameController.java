@@ -29,8 +29,10 @@ public class GameController {
 
     /** GET /api/games/{roomCode}  – get current state */
     @GetMapping("/{roomCode}")
-    public ResponseEntity<GameResponse> getGame(@PathVariable String roomCode) {
-        return ResponseEntity.ok(gameService.getGame(roomCode));
+    public ResponseEntity<GameResponse> getGame(
+            @PathVariable String roomCode,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(gameService.getGame(roomCode, user.getUsername()));
     }
 
     /** POST /api/games  – create a new game session */
@@ -68,7 +70,9 @@ public class GameController {
 
     /** POST /api/games/{roomCode}/restart  – restart the game */
     @PostMapping("/{roomCode}/restart")
-    public ResponseEntity<GameResponse> restartGame(@PathVariable String roomCode) {
-        return ResponseEntity.ok(gameService.restartGame(roomCode));
+    public ResponseEntity<GameResponse> restartGame(
+            @PathVariable String roomCode,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(gameService.restartGame(roomCode, user.getUsername()));
     }
 }

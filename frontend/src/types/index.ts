@@ -8,7 +8,7 @@ export type GameStatus = 'WAITING' | 'IN_PROGRESS' | 'FINISHED' | 'ABANDONED';
 
 export type GameMode = 'MULTIPLAYER' | 'BOT';
 
-export type BotDifficulty = 'EASY' | 'HARD';
+export type BotDifficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'easy' | 'medium' | 'hard';
 
 // ---- Auth ----
 
@@ -72,6 +72,15 @@ export interface UserResponse {
   draws: number;
 }
 
+export interface PublicUserResponse {
+  id: number;
+  username: string;
+  totalGames: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
 // ---- History ----
 
 export interface GameHistoryResponse {
@@ -80,6 +89,7 @@ export interface GameHistoryResponse {
   playerXUsername: string;
   playerOUsername: string;
   mode: GameMode;
+  botDifficulty?: BotDifficulty | null;
   winner: PlayerSymbol | null;
   winnerUsername: string | null;
   totalMoves: number;

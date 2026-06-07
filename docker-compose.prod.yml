@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mysql:
     image: mysql:8.2
@@ -11,8 +9,9 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./docs/db-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$${MYSQL_ROOT_PASSWORD}\""]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -20,8 +19,11 @@ services:
   redis:
     image: redis:7.2-alpine
     restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: redis-server --requirepass "$${REDIS_PASSWORD}"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping"]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -41,6 +43,7 @@ services:
       DB_PASSWORD: ${MYSQL_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}

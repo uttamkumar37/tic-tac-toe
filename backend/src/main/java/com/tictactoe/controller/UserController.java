@@ -1,5 +1,6 @@
 package com.tictactoe.controller;
 
+import com.tictactoe.dto.response.PublicUserResponse;
 import com.tictactoe.dto.response.UserResponse;
 import com.tictactoe.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,7 @@ public class UserController {
 
     /** GET /api/users/{username}  – public profile */
     @GetMapping("/{username}")
-    public ResponseEntity<UserResponse> getUserProfile(@PathVariable String username) {
-        return ResponseEntity.ok(userService.getProfile(username));
+    public ResponseEntity<PublicUserResponse> getUserProfile(@PathVariable String username) {
+        return ResponseEntity.ok(userService.getPublicProfile(username));
     }
 }

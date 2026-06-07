@@ -1,5 +1,23 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { appConfig } from '@/config/appConfig';
+
+const publicLinks = [
+  ['Demo', '/demo'],
+  ['Bot', '/demo/bot'],
+  ['Local', '/demo/local'],
+  ['History', '/demo/history'],
+  ['Profile', '/demo/profile'],
+  ['About', '/about'],
+  ['Tech', '/tech-stack'],
+];
+
+function navClass({ isActive }: { isActive: boolean }) {
+  return [
+    'rounded-lg px-3 py-2 text-sm font-semibold transition',
+    isActive ? 'bg-slate-950 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-700',
+  ].join(' ');
+}
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -11,50 +29,70 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
-        <Link to="/" className="text-xl font-extrabold tracking-tight hover:opacity-90">
-          ✕ Tic‑Tac‑Toe
+    <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 text-slate-900 shadow-sm backdrop-blur">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <Link to="/" className="text-xl font-extrabold hover:opacity-90">
+          Tic-Tac-Toe Arena
         </Link>
 
-        {user ? (
-          <div className="flex items-center gap-4">
-            <Link
+        {appConfig.isDemoMode ? (
+          <div className="flex flex-wrap items-center gap-1">
+            {publicLinks.map(([label, to]) => (
+              <NavLink key={to} to={to} className={navClass}>
+                {label}
+              </NavLink>
+            ))}
+          </div>
+        ) : user ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <NavLink
               to="/lobby"
-              className="text-sm hover:underline"
+              className={navClass}
             >
               Lobby
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/history"
-              className="text-sm hover:underline"
+              className={navClass}
             >
               History
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/profile"
-              className="text-sm hover:underline"
+              className={navClass}
             >
               {user.username}
-            </Link>
+            </NavLink>
             <button
               onClick={handleLogout}
-              className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition"
+              className="rounded-lg border border-slate-300 px-3 py-1 text-sm font-semibold text-slate-700 transition hover:border-red-300 hover:text-red-600"
             >
               Logout
             </button>
           </div>
         ) : (
-          <div className="flex gap-3">
-            <Link
+          <div className="flex flex-wrap items-center gap-1">
+            <NavLink
+              to="/demo"
+              className={navClass}
+            >
+              Demo
+            </NavLink>
+            <NavLink
+              to="/about"
+              className={navClass}
+            >
+              About
+            </NavLink>
+            <NavLink
               to="/login"
-              className="text-sm hover:underline"
+              className={navClass}
             >
               Login
-            </Link>
+            </NavLink>
             <Link
               to="/register"
-              className="text-sm bg-white text-indigo-600 px-3 py-1 rounded-lg font-semibold hover:bg-indigo-50"
+              className="rounded-lg bg-slate-950 px-3 py-1 text-sm font-semibold text-white hover:bg-slate-800"
             >
               Register
             </Link>

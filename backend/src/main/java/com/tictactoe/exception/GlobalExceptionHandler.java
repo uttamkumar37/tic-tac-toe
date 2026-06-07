@@ -4,9 +4,11 @@ import com.tictactoe.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,6 +45,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAuth(
             Exception ex, HttpServletRequest req) {
         return build(HttpStatus.UNAUTHORIZED, "Invalid credentials", req.getRequestURI());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), req.getRequestURI());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(
+            ObjectOptimisticLockingFailureException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT,
+                "Game state changed. Please refresh and try again.", req.getRequestURI());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

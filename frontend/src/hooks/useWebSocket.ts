@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { wsService } from '@/services/websocketService';
 import { updateGameState } from '@/store/gameSlice';
@@ -14,32 +14,33 @@ import toast from 'react-hot-toast';
 export function useWebSocket(roomCode: string | null) {
   const dispatch = useDispatch();
   const { user } = useAuth();
+  const [isConnected, setIsConnected] = useState(wsService.isConnected());
 
-  const connect = useCallback(() => {
+  useEffect(() => {
     if (!user?.token || !roomCode) return;
 
-    wsService.connect(user.token, () => {
+    const unsubscribeConnection = wsService.onConnectionChange(setIsConnected);
+    const unsubscribeErrors = wsService.subscribeToErrors((msg) => {
+      toast.error(`Game error: ${msg}`);
+    });
+
+    const subscribeToRoom = () => {
       wsService.subscribeToGame(roomCode, (game) => {
         dispatch(updateGameState(game));
       });
+    };
 
-      wsService.subscribeToErrors((msg) => {
-        toast.error(`Game error: ${msg}`);
-      });
-    });
+    wsService.connect(user.token, subscribeToRoom);
+
+    return () => {
+      wsService.unsubscribeFromGame(roomCode);
+      unsubscribeErrors();
+      unsubscribeConnection();
+    };
   }, [user?.token, roomCode, dispatch]);
 
-  useEffect(() => {
-    connect();
-    return () => {
-      if (roomCode) {
-        wsService.unsubscribeFromGame(roomCode);
-      }
-    };
-  }, [connect, roomCode]);
-
   return {
-    isConnected: wsService.isConnected(),
+    isConnected,
     sendMove: wsService.sendMove.bind(wsService),
     sendUndo: wsService.sendUndo.bind(wsService),
     sendRestart: wsService.sendRestart.bind(wsService),

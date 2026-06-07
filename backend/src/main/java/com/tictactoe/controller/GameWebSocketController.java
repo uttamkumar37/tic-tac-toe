@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.*;
 import org.springframework.messaging.simp.annotation.SendToUser;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
@@ -29,21 +30,22 @@ public class GameWebSocketController {
     /** Client sends: SEND /app/game.move  with MakeMoveRequest payload */
     @MessageMapping("/game.move")
     public void makeMove(@Valid @Payload MakeMoveRequest req, Principal principal) {
-        log.debug("WS move: {} by {}", req.getPosition(), principal.getName());
-        gameService.makeMove(req, principal.getName());
+        String username = requireUsername(principal);
+        log.debug("WS move: {} by {}", req.getPosition(), username);
+        gameService.makeMove(req, username);
         // broadcast is handled inside GameService via SimpMessagingTemplate
     }
 
     /** Client sends: SEND /app/game.undo  with { roomCode } */
     @MessageMapping("/game.undo")
     public void undoMove(@Payload MakeMoveRequest req, Principal principal) {
-        gameService.undoMove(req.getRoomCode(), principal.getName());
+        gameService.undoMove(req.getRoomCode(), requireUsername(principal));
     }
 
     /** Client sends: SEND /app/game.restart  with { roomCode } */
     @MessageMapping("/game.restart")
-    public void restartGame(@Payload MakeMoveRequest req) {
-        gameService.restartGame(req.getRoomCode());
+    public void restartGame(@Payload MakeMoveRequest req, Principal principal) {
+        gameService.restartGame(req.getRoomCode(), requireUsername(principal));
     }
 
     /** Used by the WebSocket error handler to route errors back to the sender */
@@ -52,5 +54,12 @@ public class GameWebSocketController {
     public String handleException(Exception e) {
         log.warn("WebSocket error: {}", e.getMessage());
         return e.getMessage();
+    }
+
+    private String requireUsername(Principal principal) {
+        if (principal == null || principal.getName() == null) {
+            throw new AccessDeniedException("Authenticated WebSocket user is required");
+        }
+        return principal.getName();
     }
 }

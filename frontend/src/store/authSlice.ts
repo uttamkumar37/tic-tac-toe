@@ -1,6 +1,8 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import type { AuthResponse, LoginRequest, RegisterRequest } from '@/types';
 import { authAPI } from '@/services/api';
+import { appConfig } from '@/config/appConfig';
+import { demoAuthService } from '@/services/demo/demoAuthService';
 
 interface AuthState {
   user: AuthResponse | null;
@@ -9,6 +11,10 @@ interface AuthState {
 }
 
 function loadStoredAuth(): AuthResponse | null {
+  if (appConfig.isDemoMode) {
+    return demoAuthService.getDemoAuth();
+  }
+
   const stored = localStorage.getItem('auth');
   if (!stored) {
     return null;

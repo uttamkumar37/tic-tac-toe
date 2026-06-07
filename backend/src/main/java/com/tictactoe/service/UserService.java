@@ -1,5 +1,6 @@
 package com.tictactoe.service;
 
+import com.tictactoe.dto.response.PublicUserResponse;
 import com.tictactoe.dto.response.UserResponse;
 import com.tictactoe.exception.ResourceNotFoundException;
 import com.tictactoe.model.User;
@@ -18,6 +19,12 @@ public class UserService {
     public UserResponse getProfile(String username) {
         User user = findByUsername(username);
         return toResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public PublicUserResponse getPublicProfile(String username) {
+        User user = findByUsername(username);
+        return toPublicResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -43,6 +50,17 @@ public class UserService {
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
+                .totalGames(user.getTotalGames())
+                .wins(user.getWins())
+                .losses(user.getLosses())
+                .draws(user.getDraws())
+                .build();
+    }
+
+    private PublicUserResponse toPublicResponse(User user) {
+        return PublicUserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
                 .totalGames(user.getTotalGames())
                 .wins(user.getWins())
                 .losses(user.getLosses())

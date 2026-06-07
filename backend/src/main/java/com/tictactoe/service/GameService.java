@@ -13,6 +13,7 @@ import com.tictactoe.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -104,6 +105,7 @@ public class GameService {
         Game game = findGame(req.getRoomCode());
         User user = userService.findByUsername(username);
 
+        validateParticipant(game, user);
         validateGameActive(game);
         validateTurn(game, user);
 
@@ -189,6 +191,9 @@ public class GameService {
     @Transactional
     public GameResponse undoMove(String roomCode, String username) {
         Game game = findGame(roomCode);
+        User user = userService.findByUsername(username);
+
+        validateParticipant(game, user);
         validateGameActive(game);
 
         Move lastMove = moveRepository.findTopByGameIdOrderByMoveNumberDesc(game.getId())
@@ -226,8 +231,11 @@ public class GameService {
     // ------------------------------------------------------------------ //
 
     @Transactional
-    public GameResponse restartGame(String roomCode) {
+    public GameResponse restartGame(String roomCode, String username) {
         Game game = findGame(roomCode);
+        User user = userService.findByUsername(username);
+
+        validateParticipant(game, user);
 
         // Remove all moves
         List<Move> moves = moveRepository.findByGameIdOrderByMoveNumberAsc(game.getId());
@@ -251,8 +259,15 @@ public class GameService {
     // ------------------------------------------------------------------ //
 
     @Transactional(readOnly = true)
-    public GameResponse getGame(String roomCode) {
-        return toResponse(findGame(roomCode));
+    public GameResponse getGame(String roomCode, String username) {
+        Game game = findGame(roomCode);
+        User user = userService.findByUsername(username);
+        validateParticipant(game, user);
+        GameResponse response = toResponse(game);
+        if (game.getStatus() == GameStatus.IN_PROGRESS) {
+            redisGameStateService.getBoard(roomCode).ifPresent(response::setBoard);
+        }
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -295,6 +310,24 @@ public class GameService {
     private void validateGameActive(Game game) {
         if (game.getStatus() != GameStatus.IN_PROGRESS) {
             throw new GameException("Game " + game.getRoomCode() + " is not active");
+        }
+    }
+
+    private void validateParticipant(Game game, User user) {
+        boolean isPlayerX = game.getPlayerX() != null
+                && game.getPlayerX().getId().equals(user.getId());
+        boolean isPlayerO = game.getPlayerO() != null
+                && game.getPlayerO().getId().equals(user.getId());
+
+        if (game.getMode() == GameMode.BOT) {
+            if (!isPlayerX) {
+                throw new AccessDeniedException("You are not allowed to access this game");
+            }
+            return;
+        }
+
+        if (!isPlayerX && !isPlayerO) {
+            throw new AccessDeniedException("You are not allowed to access this game");
         }
     }
 
